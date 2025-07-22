@@ -1,6 +1,7 @@
 import logging
 import time
-import openai  
+import openai 
+import os
 import secrets
 from flask import Flask, request, session
 from twilio.twiml.messaging_response import MessagingResponse
