@@ -14,11 +14,11 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
 # Initialize OpenAI API key
-openai.api_key = "YOUR_OPENAI_API_KEY"
+openai.api_key = os.environ["OPENAI_API_KEY"]
 
 # Twilio Configuration
-account_sid = 'YOUR_TWILIO_SID'
-auth_token = 'YOUR_TWILIO_AUTH_TOKEN'
+account_sid = os.environ["TWILIO_ACCOUNT_SID"]
+auth_token = os.environ["TWILIO_AUTH_TOKEN"]
 client = Client(account_sid, auth_token)
 
 # Initialize the in-memory database
@@ -59,7 +59,7 @@ def sendMessage(body_mess, phone_number):
             logging.debug(f"Sending message chunk: {final_chunk} to {phone_number}")
             
             message = client.messages.create(
-                from_='whatsapp:+14155238886',
+                from_=os.environ["TWILIO_WHATSAPP_NUMBER"],
                 body=final_chunk,
                 to='whatsapp:' + phone_number
             )
