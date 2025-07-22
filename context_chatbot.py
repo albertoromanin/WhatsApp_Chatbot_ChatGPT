@@ -1,6 +1,6 @@
 import logging
 import time
-import openai 
+from openai import openai 
 import os
 import secrets
 from flask import Flask, request, session
