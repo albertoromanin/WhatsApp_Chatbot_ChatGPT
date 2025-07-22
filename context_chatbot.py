@@ -174,7 +174,7 @@ def sms_reply():
         sendMessage("Message cannot be empty!", phone_number[9:])
 
     resp = MessagingResponse()
-    resp.message("void")
+    resp.message(answer)
     return str(resp)
 
 if __name__ == '__main__':
