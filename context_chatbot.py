@@ -1,6 +1,6 @@
 import logging
 import time
-from openai import openai 
+from openai import OpenAI
 import os
 import secrets
 from flask import Flask, request, session
@@ -128,8 +128,9 @@ Your role is to deliver this personalized service through the WhatsApp platform,
 
     try:
         logging.debug("Fetching previous conversations from database...")
-        
-        response = openai.ChatCompletion.create(
+
+        client = OpenAI()
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo-16k",
             messages=messages,
             temperature=0.75,
