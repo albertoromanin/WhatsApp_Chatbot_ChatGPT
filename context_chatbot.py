@@ -63,6 +63,7 @@ def sendMessage(body_mess, phone_number):
                 from_=os.environ["TWILIO_WHATSAPP_NUMBER"],
                 body=final_chunk,
                 to='whatsapp:' + phone_number
+                print(f"Phone number received: {phone_number}")
             )
             
             time.sleep(1)  # Optional: To avoid rate-limiting
