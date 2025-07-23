@@ -8,6 +8,10 @@ from twilio.rest import Client
 from openai import OpenAI, OpenAIError
 from DB import TinyDB  
 
+# Import detailed request to openAI
+with open("system_prompt.txt", "r", encoding="utf-8") as f:
+    SYSTEM_PROMPT = f.read()
+
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -74,9 +78,7 @@ def get_chatgpt_response(prompt, phone_number):
         for conv in last_5_conversations
     ])
 
-    system_message = """As a travel assistant WhatsApp chatbot, your primary responsibility is to create tailored travel itineraries based on user input. ...
-    (mantieni il tuo messaggio completo qui) ...
-    """
+    system_message = SYSTEM_PROMPT
 
     messages = [
         {"role": "system", "content": system_message}
