@@ -20,9 +20,8 @@ with open("system_prompt.txt", "r", encoding="utf-8") as f:
 logging.basicConfig(level=logging.DEBUG)
 
 # Inizializza con path json e nome sheet (caricalo in env o path fisso)
-GSHEETS_CREDS_PATH = 'path/credentials.json'
 GSHEETS_SHEET_NAME = 'DB'
-gsheets_db = GoogleSheetsDB(GSHEETS_CREDS_PATH, GSHEETS_SHEET_NAME)
+gsheets_db = GoogleSheetsDB(GSHEETS_SHEET_NAME)
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
