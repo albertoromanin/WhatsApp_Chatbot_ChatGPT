@@ -9,6 +9,7 @@ from openai import OpenAI, OpenAIError
 from DB import TinyDB  
 from flask import render_template_string
 from datetime import datetime
+from gsheets_db import GoogleSheetsDB
 
 
 # Import detailed request to openAI
@@ -17,6 +18,11 @@ with open("system_prompt.txt", "r", encoding="utf-8") as f:
 
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
+
+# Inizializza con path json e nome sheet (caricalo in env o path fisso)
+GSHEETS_CREDS_PATH = 'path/credentials.json'
+GSHEETS_SHEET_NAME = 'DB'
+gsheets_db = GoogleSheetsDB(GSHEETS_CREDS_PATH, GSHEETS_SHEET_NAME)
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -104,6 +110,9 @@ def get_chatgpt_response(prompt, phone_number):
 
         generated_response = response.choices[0].message.content.strip()
 
+        # Salva anche su Google Sheets
+        gsheets_db.append_request(phone_number, prompt, generated_response)
+
         db.append_to_conversation("conversations", phone_number, {
             "user_message": prompt,
             "gpt_response": generated_response
@@ -115,6 +124,7 @@ def get_chatgpt_response(prompt, phone_number):
     except OpenAIError as e:
         logging.error(f"OpenAI API Error: {str(e)}", exc_info=True)
         return "Error occurred while retrieving response from OpenAI API."
+
 
 #Per generare risposta GPT
 @app.route('/sms', methods=['POST'])
