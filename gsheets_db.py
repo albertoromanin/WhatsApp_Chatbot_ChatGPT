@@ -4,7 +4,10 @@ import os
 
 class GoogleSheetsDB:
     def __init__(self, sheet_name):
-        scopes = ['https://www.googleapis.com/auth/spreadsheets']
+        scopes = [
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"  # NECESSARIO per trovare il file per nome
+        ]
         # Percorso fisso dove Render monta il Secret File
         service_account_path = "/etc/secrets/credentials.json"
         creds = Credentials.from_service_account_file(service_account_path, scopes=scopes)
