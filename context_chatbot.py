@@ -7,6 +7,9 @@ from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 from openai import OpenAI, OpenAIError
 from DB import TinyDB  
+from flask import render_template_string
+from datetime import datetime
+
 
 # Import detailed request to openAI
 with open("system_prompt.txt", "r", encoding="utf-8") as f:
@@ -113,6 +116,7 @@ def get_chatgpt_response(prompt, phone_number):
         logging.error(f"OpenAI API Error: {str(e)}", exc_info=True)
         return "Error occurred while retrieving response from OpenAI API."
 
+#Per generare risposta GPT
 @app.route('/sms', methods=['POST'])
 def sms_reply():
     incoming_msg = request.form.get('Body')
@@ -134,6 +138,56 @@ def sms_reply():
 
     # DON'T send a second response through Twilio
     return str(MessagingResponse())  # empty response
+
+
+# Per popolare la dashboard in ordine cronologico
+@app.route('/dashboard', methods=['GET'])
+def dashboard():
+    table = db.db.table("conversations")
+    all_data = table.all()
+
+    # Prepara i dati ordinati per timestamp
+    rows = []
+    for user_record in all_data:
+        phone = user_record.get("key")
+        for convo in user_record.get("data", []):
+            rows.append({
+                "phone": phone,
+                "user_message": convo.get("user_message", ""),
+                "gpt_response": convo.get("gpt_response", ""),
+                "timestamp": convo.get("timestamp", "N/A")
+            })
+
+    # Ordina i messaggi per timestamp
+    rows.sort(key=lambda x: x["timestamp"])
+
+    html = """
+    <html>
+    <head>
+        <title>Conversazioni WhatsApp</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .entry { border-bottom: 1px solid #ccc; padding: 10px 0; }
+            .phone { font-weight: bold; color: #2a2a2a; }
+            .time { color: #777; font-size: 0.9em; }
+            .user, .gpt { margin: 4px 0; }
+        </style>
+    </head>
+    <body>
+        <h2>Conversazioni WhatsApp (ord. per timestamp)</h2>
+        {% for r in rows %}
+        <div class="entry">
+            <div class="phone">{{ r.phone }}</div>
+            <div class="time">{{ r.timestamp }}</div>
+            <div class="user"><strong>Utente:</strong> {{ r.user_message }}</div>
+            <div class="gpt"><strong>ChatGPT:</strong> {{ r.gpt_response }}</div>
+        </div>
+        {% endfor %}
+    </body>
+    </html>
+    """
+    
+    return render_template_string(html, rows=rows)
 
 if __name__ == '__main__':
     app.run(debug=True)
