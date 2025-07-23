@@ -3,7 +3,7 @@ from google.oauth2.service_account import Credentials
 import os
 
 class GoogleSheetsDB:
-    def __init__(self, creds_json_path, sheet_name):
+    def __init__(self, sheet_name):
         scopes = ['https://www.googleapis.com/auth/spreadsheets']
         # Percorso fisso dove Render monta il Secret File
         service_account_path = "/etc/secrets/credentials.json"
