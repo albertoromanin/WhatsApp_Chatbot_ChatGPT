@@ -3,7 +3,7 @@ from google.oauth2.service_account import Credentials
 import os
 
 class GoogleSheetsDB:
-    def __init__(self, sheet_name):
+    def __init__(self, sheet_id):
         scopes = [
                 "https://www.googleapis.com/auth/spreadsheets",
                 "https://www.googleapis.com/auth/drive"  # NECESSARIO per trovare il file per nome
