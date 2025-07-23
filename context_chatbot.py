@@ -132,9 +132,8 @@ def sms_reply():
         answer = "Message cannot be empty!"
         sendMessage(answer, phone_number[9:])
 
-    resp = MessagingResponse()
-    resp.message(answer)
-    return str(resp)
+    # DON'T send a second response through Twilio
+    return str(MessagingResponse())  # empty response
 
 if __name__ == '__main__':
     app.run(debug=True)
