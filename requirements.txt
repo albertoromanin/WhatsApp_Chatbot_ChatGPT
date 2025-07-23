@@ -4,3 +4,5 @@ openai
 twilio
 python-dotenv
 tinydb
+gspread
+google-auth
