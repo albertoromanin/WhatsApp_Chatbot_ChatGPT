@@ -12,7 +12,7 @@ class GoogleSheetsDB:
         service_account_path = "/etc/secrets/credentials.json"
         creds = Credentials.from_service_account_file(service_account_path, scopes=scopes)
         client = gspread.authorize(creds)
-        self.sheet = client.open(sheet_name).sheet1  # usa il primo foglio
+        self.sheet = client.open_by_key(sheet_id).sheet1  # usa il primo foglio
 
     def append_request(self, phone_number, user_message, gpt_response):
         # Aggiunge una riga nuova con i dati e timestamp
