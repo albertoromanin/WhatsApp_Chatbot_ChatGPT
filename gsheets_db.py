@@ -5,7 +5,9 @@ import os
 class GoogleSheetsDB:
     def __init__(self, creds_json_path, sheet_name):
         scopes = ['https://www.googleapis.com/auth/spreadsheets']
-        creds = Credentials.from_service_account_file(creds_json_path, scopes=scopes)
+        # Percorso fisso dove Render monta il Secret File
+        service_account_path = "/etc/secrets/credentials.json"
+        creds = Credentials.from_service_account_file(service_account_path, scopes=scopes)
         client = gspread.authorize(creds)
         self.sheet = client.open(sheet_name).sheet1  # usa il primo foglio
 
