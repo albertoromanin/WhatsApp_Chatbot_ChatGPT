@@ -164,7 +164,7 @@ def dashboard():
     html = """
     <html>
     <head>
-        <title>Conversazioni WhatsApp</title>
+        <title>Preparazioni - Richieste WhatsApp</title>
         <style>
             body { font-family: Arial, sans-serif; padding: 20px; }
             .entry { border-bottom: 1px solid #ccc; padding: 10px 0; }
@@ -174,7 +174,7 @@ def dashboard():
         </style>
     </head>
     <body>
-        <h2>Conversazioni WhatsApp (ord. per timestamp)</h2>
+        <h2>Preparazioni - Richieste WhatsApp</h2>
         {% for r in rows %}
         <div class="entry">
             <div class="phone">{{ r.phone }}</div>
