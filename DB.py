@@ -2,6 +2,7 @@ import os
 import tinydb
 from tinydb.queries import where
 from tinydb.storages import JSONStorage, MemoryStorage
+from datetime import datetime
 
 
 class TinyDB():
@@ -35,6 +36,9 @@ class TinyDB():
 
 
     def append_to_conversation(self, db_path: str, phone_number: str, new_conversation: dict):
+        # Aggiungiamo un timestamp corrente al messaggio
+        new_conversation["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         table = self.db.table(db_path)
         existing_record = table.get(where("key") == phone_number)
         if existing_record:
