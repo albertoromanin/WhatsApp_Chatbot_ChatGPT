@@ -104,8 +104,11 @@ def get_chatgpt_response(prompt, phone_number):
 
     dati_pendenti = db.read_record("pending_confirmation", phone_number)
     if dati_pendenti and "campi" in dati_pendenti:
-        sintesi = "\n".join([f"**{k}:** {v}" for k, v in dati_pendenti["campi"].items() if v])
-        messages.append({"role": "assistant", "content": f"Informazioni raccolte finora:\n{sintesi}"})
+        sintesi = "\n".join([f"{k}: {v}" for k, v in dati_pendenti["campi"].items() if v])
+        messages.append({
+            "role": "assistant",
+            "content": f"Riepilogo dei dati finora:\n{sintesi}"
+        })
 
     if previous_conversation:
         messages[0]["content"] += "\n\nHere are the five previous user messages and chatbot responses for context:\n\n" + previous_conversation
