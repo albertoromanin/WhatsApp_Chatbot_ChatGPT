@@ -130,22 +130,16 @@ def get_chatgpt_response(prompt, phone_number):
             pending = db.read_record("pending_confirmation", phone_number)
             if pending and "campi" in pending:
                 campi = pending["campi"]
-                # Verifica che tutti i campi obbligatori siano presenti e non vuoti
-                campi_obbligatori = ["Principio attivo", "Forma farmaceutica", "Concentrazione", "Data di consegna"]
-                if all(campi.get(k) for k in campi_obbligatori):
-                    gsheets_db.append_parsed_response(
-                        phone_number,
-                        pending.get("prompt", ""),
-                        pending.get("response", ""),
-                        campi
-                    )
-                    db.delete_record("pending_confirmation", phone_number)
-                    return "Grazie, confermato. La richiesta è stata salvata."
-                else:
-                    campi_mancanti = [k for k in campi_obbligatori if not campi.get(k)]
-                    return f"Non ho ancora tutti i dati per confermare. Mancano: {', '.join(campi_mancanti)}."
+                gsheets_db.append_parsed_response(
+                phone_number,
+                pending.get("prompt", ""),
+                pending.get("response", ""),
+                campi
+                )
+                db.delete_record("pending_confirmation", phone_number)
+                return "Grazie, confermato. La richiesta è stata salvata."
             else:
-                return "Non ho ancora tutti i dati per confermare. Per favore completa le informazioni."
+                return "Non ho trovato dati da confermare. Per favore fornisci le informazioni richieste."
 
         campi_aggiornati = unisci_dati_vecchi_e_nuovi(phone_number, generated_response)
         db.write_record("pending_confirmation", phone_number, {
