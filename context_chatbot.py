@@ -115,25 +115,30 @@ def get_chatgpt_response(prompt, phone_number):
 
         generated_response = response.choices[0].message.content.strip()
 
-        # Salva anche su Google Sheets
-        gsheets_db.append_request(phone_number, prompt, generated_response)
-
-        db.append_to_conversation("conversations", phone_number, {
+        # Salva la risposta temporaneamente in attesa di conferma
+        db.write_record("pending_confirmation", phone_number, {
             "user_message": prompt,
             "gpt_response": generated_response
         })
 
-        logging.debug("Successfully stored conversation.")
+        # Salva comunque la conversazione nel log locale
+        db.append_to_conversation("conversations", phone_number, {
+            "user_message": prompt,
+            "gpt_response": generated_response,
+            "timestamp": datetime.now().isoformat()
+        })
+
+        logging.debug("Stored pending confirmation.")
         return generated_response if generated_response else ''
 
     except OpenAIError as e:
         logging.error(f"OpenAI API Error: {str(e)}", exc_info=True)
-        return "Error occurred while retrieving response from OpenAI API."
+        return "Errore durante la comunicazione con il modello AI."
 
 #Per generare risposta GPT
 @app.route('/sms', methods=['POST'])
 def sms_reply():
-    incoming_msg = request.form.get('Body')
+    incoming_msg = request.form.get('Body').strip().lower()
     phone_number = request.form.get('From')
     session_id = session.get('session_id', None)
 
@@ -143,15 +148,32 @@ def sms_reply():
 
     logging.debug(f"Incoming message from {phone_number}: {incoming_msg}")
 
+    confirmation_keywords = ["ok", "va bene", "confermo", "perfetto"]
+
+    if incoming_msg in confirmation_keywords:
+        # Cerca una risposta in attesa di conferma
+        pending = db.read_record("pending_confirmation", phone_number)
+        if pending:
+            logging.info("Utente ha confermato. Registrazione in corso.")
+            gsheets_db.append_request(
+                phone_number,
+                pending["user_message"],
+                pending["gpt_response"]
+            )
+            db.delete_record("pending_confirmation", phone_number)
+            sendMessage("✅ Richiesta confermata e registrata.", phone_number[9:])
+        else:
+            sendMessage("⚠️ Nessuna richiesta in attesa di conferma.", phone_number[9:])
+        return str(MessagingResponse())
+
+    # Se NON è una conferma, tratta come nuova richiesta
     if incoming_msg:
         answer = get_chatgpt_response(incoming_msg, phone_number)
         sendMessage(answer, phone_number[9:])
     else:
-        answer = "Message cannot be empty!"
-        sendMessage(answer, phone_number[9:])
+        sendMessage("Messaggio vuoto. Riprova.", phone_number[9:])
 
-    # DON'T send a second response through Twilio
-    return str(MessagingResponse())  # empty response
+    return str(MessagingResponse())
 
 
 # Per popolare la dashboard in ordine cronologico
