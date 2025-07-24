@@ -10,37 +10,27 @@ from DB import TinyDB
 from flask import render_template_string
 from datetime import datetime
 from gsheets_db import GoogleSheetsDB
-
-
-# Import detailed request to openAI
-with open("system_prompt.txt", "r", encoding="utf-8") as f:
-    SYSTEM_PROMPT = f.read()
+from utils import estrai_campi_risposta  # Assicurati che questa funzione sia definita
 
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
 
-# Inizializza con path json e nome sheet (caricalo in env o path fisso)
 GSHEETS_SHEET_ID = '1nmR7fxJolbfNdICtzn2Zkf0GSr3AOXRDhdzYV2ZbxmE'
 gsheets_db = GoogleSheetsDB(GSHEETS_SHEET_ID)
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
-# Initialize OpenAI client
 client_ai = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-# Twilio Configuration
 account_sid = os.environ["TWILIO_ACCOUNT_SID"]
 auth_token = os.environ["TWILIO_AUTH_TOKEN"]
 client = Client(account_sid, auth_token)
 
-# Initialize the in-memory database
 db = TinyDB(db_location='tmp', in_memory=False)
 
 def sendMessage(body_mess, phone_number):
     try:
         MAX_MESSAGE_LENGTH = 550 
-
         lines = body_mess.split('\n')
         chunks = []
         current_chunk = ""
@@ -62,32 +52,33 @@ def sendMessage(body_mess, phone_number):
         for i, chunk in enumerate(chunks):
             part_number = f"[{i+1}/{total_chunks}]"
             final_chunk = f"{chunk} {part_number}"
-            logging.debug(f"Sending message chunk: {final_chunk} to {phone_number}")
-
             message = client.messages.create(
                 from_=os.environ["TWILIO_WHATSAPP_NUMBER"],
                 body=final_chunk,
                 to='whatsapp:' + phone_number
             )
-
             time.sleep(1)
-
     except Exception as e:
         logging.error(f"Failed to send message. Error: {str(e)}")
 
+def unisci_dati_vecchi_e_nuovi(phone_number, nuova_risposta):
+    nuovi_campi = estrai_campi_risposta(nuova_risposta)
+    vecchi_dati = db.read_record("pending_confirmation", phone_number) or {}
+    if "campi" in vecchi_dati:
+        for chiave, valore in vecchi_dati["campi"].items():
+            if not nuovi_campi.get(chiave):
+                nuovi_campi[chiave] = valore
+    return nuovi_campi
+
 def get_chatgpt_response(prompt, phone_number):
     logging.debug(f"Received prompt: {prompt}")
-
-    # Carica data odierna e prompt da file
     data_oggi = datetime.now().strftime("%d/%m/%Y")
     with open("system_prompt.txt", "r", encoding="utf-8") as f:
         system_prompt_template = f.read()
     system_message = system_prompt_template.replace("{data_oggi}", data_oggi)
 
-    # Recupera ultime conversazioni
     all_conversations = db.read_list_record("conversations", phone_number, default=[])
     last_5_conversations = all_conversations[-10:]
-
     previous_conversation = "\n".join([
         f'User: {conv["user_message"]}\nAssistant: {conv["gpt_response"]}'
         for conv in last_5_conversations
@@ -95,17 +86,17 @@ def get_chatgpt_response(prompt, phone_number):
 
     messages = [{"role": "system", "content": system_message}]
 
+    dati_pendenti = db.read_record("pending_confirmation", phone_number)
+    if dati_pendenti and "campi" in dati_pendenti:
+        sintesi = "\n".join([f"**{k}:** {v}" for k, v in dati_pendenti["campi"].items() if v])
+        messages.append({"role": "assistant", "content": f"Informazioni raccolte finora:\n{sintesi}"})
+
     if previous_conversation:
-        messages[0]["content"] += (
-            "\n\nHere are the five previous user messages and chatbot responses for context:\n\n"
-            + previous_conversation
-        )
+        messages[0]["content"] += "\n\nHere are the five previous user messages and chatbot responses for context:\n\n" + previous_conversation
 
     messages.append({"role": "user", "content": prompt})
 
     try:
-        logging.debug("Fetching response from OpenAI API...")
-
         response = client_ai.chat.completions.create(
             model="gpt-3.5-turbo-16k",
             messages=messages,
@@ -115,30 +106,43 @@ def get_chatgpt_response(prompt, phone_number):
 
         generated_response = response.choices[0].message.content.strip()
 
-        # Salva la risposta temporaneamente in attesa di conferma
+        conferme_ok = ["ok", "ok.", "ok!", "ok grazie", "grazie", "va bene", "perfetto"]
+        if prompt.strip().lower() in conferme_ok:
+            pending = db.read_record("pending_confirmation", phone_number)
+            if pending and "campi" in pending:
+                campi = pending["campi"]
+                gsheets_db.append_parsed_response(
+                    phone_number,
+                    pending.get("prompt", ""),
+                    pending.get("response", ""),
+                    campi
+                )
+                db.delete_record("pending_confirmation", phone_number)
+                return "Grazie, confermato. La richiesta è stata salvata."
+            else:
+                return "Non ho ancora tutti i dati per confermare. Per favore completa le informazioni."
+
+        campi_aggiornati = unisci_dati_vecchi_e_nuovi(phone_number, generated_response)
         db.write_record("pending_confirmation", phone_number, {
+            "prompt": prompt,
+            "response": generated_response,
+            "campi": campi_aggiornati
+        })
+
+        db.append_to_conversation("conversations", phone_number, {
             "user_message": prompt,
             "gpt_response": generated_response
         })
 
-        # Salva comunque la conversazione nel log locale
-        db.append_to_conversation("conversations", phone_number, {
-            "user_message": prompt,
-            "gpt_response": generated_response,
-            "timestamp": datetime.now().isoformat()
-        })
-
-        logging.debug("Stored pending confirmation.")
         return generated_response if generated_response else ''
 
     except OpenAIError as e:
         logging.error(f"OpenAI API Error: {str(e)}", exc_info=True)
-        return "Errore durante la comunicazione con il modello AI."
+        return "Errore durante il recupero della risposta da OpenAI."
 
-#Per generare risposta GPT
 @app.route('/sms', methods=['POST'])
 def sms_reply():
-    incoming_msg = request.form.get('Body').strip().lower()
+    incoming_msg = request.form.get('Body')
     phone_number = request.form.get('From')
     session_id = session.get('session_id', None)
 
@@ -148,41 +152,18 @@ def sms_reply():
 
     logging.debug(f"Incoming message from {phone_number}: {incoming_msg}")
 
-    confirmation_keywords = ["ok", "va bene", "confermo", "perfetto"]
-
-    if incoming_msg in confirmation_keywords:
-        # Cerca una risposta in attesa di conferma
-        pending = db.read_record("pending_confirmation", phone_number)
-        if pending:
-            logging.info("Utente ha confermato. Registrazione in corso.")
-            gsheets_db.append_request(
-                phone_number,
-                pending["user_message"],
-                pending["gpt_response"]
-            )
-            db.delete_record("pending_confirmation", phone_number)
-            sendMessage("✅ Richiesta confermata e registrata.", phone_number[9:])
-        else:
-            sendMessage("⚠️ Nessuna richiesta in attesa di conferma.", phone_number[9:])
-        return str(MessagingResponse())
-
-    # Se NON è una conferma, tratta come nuova richiesta
     if incoming_msg:
         answer = get_chatgpt_response(incoming_msg, phone_number)
         sendMessage(answer, phone_number[9:])
     else:
-        sendMessage("Messaggio vuoto. Riprova.", phone_number[9:])
+        sendMessage("Il messaggio non può essere vuoto!", phone_number[9:])
 
     return str(MessagingResponse())
 
-
-# Per popolare la dashboard in ordine cronologico
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     table = db.db.table("conversations")
     all_data = table.all()
-
-    # Prepara i dati ordinati per timestamp
     rows = []
     for user_record in all_data:
         phone = user_record.get("key")
@@ -193,8 +174,6 @@ def dashboard():
                 "gpt_response": convo.get("gpt_response", ""),
                 "timestamp": convo.get("timestamp", "N/A")
             })
-
-    # Ordina i messaggi per timestamp
     rows.sort(key=lambda x: x["timestamp"])
 
     html = """
@@ -222,7 +201,6 @@ def dashboard():
     </body>
     </html>
     """
-    
     return render_template_string(html, rows=rows)
 
 if __name__ == '__main__':
