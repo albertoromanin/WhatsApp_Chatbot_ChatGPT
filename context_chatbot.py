@@ -78,6 +78,13 @@ def sendMessage(body_mess, phone_number):
 def get_chatgpt_response(prompt, phone_number):
     logging.debug(f"Received prompt: {prompt}")
 
+    # Carica data odierna e prompt da file
+    data_oggi = datetime.now().strftime("%d/%m/%Y")
+    with open("system_prompt.txt", "r", encoding="utf-8") as f:
+        system_prompt_template = f.read()
+    system_message = system_prompt_template.replace("{data_oggi}", data_oggi)
+
+    # Recupera ultime conversazioni
     all_conversations = db.read_list_record("conversations", phone_number, default=[])
     last_5_conversations = all_conversations[-10:]
 
@@ -86,14 +93,13 @@ def get_chatgpt_response(prompt, phone_number):
         for conv in last_5_conversations
     ])
 
-    system_message = SYSTEM_PROMPT
-
-    messages = [
-        {"role": "system", "content": system_message}
-    ]
+    messages = [{"role": "system", "content": system_message}]
 
     if previous_conversation:
-        messages[0]["content"] += f"\n\nHere are the five previous user messages and chatbot responses for context:\n\n{previous_conversation}"
+        messages[0]["content"] += (
+            "\n\nHere are the five previous user messages and chatbot responses for context:\n\n"
+            + previous_conversation
+        )
 
     messages.append({"role": "user", "content": prompt})
 
@@ -123,7 +129,6 @@ def get_chatgpt_response(prompt, phone_number):
     except OpenAIError as e:
         logging.error(f"OpenAI API Error: {str(e)}", exc_info=True)
         return "Error occurred while retrieving response from OpenAI API."
-
 
 #Per generare risposta GPT
 @app.route('/sms', methods=['POST'])
