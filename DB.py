@@ -34,6 +34,13 @@ class TinyDB():
         print()
         return record.get("data", default) if record else default
 
+    def write_record(self, table_name, key, value):
+        table = self.db.table(table_name)
+        record = table.get(where("key") == key)
+        if record:
+            table.update({"data": value}, where("key") == key)
+        else:
+            table.insert({"key": key, "data": value})
 
     def append_to_conversation(self, db_path: str, phone_number: str, new_conversation: dict):
         # Aggiungiamo un timestamp corrente al messaggio
