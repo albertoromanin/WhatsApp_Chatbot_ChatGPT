@@ -40,7 +40,7 @@ class GoogleSheetsDB:
 
     def append_request(self, phone_number, user_message, gpt_response):
         # Aggiunge una riga nuova con i dati e timestamp
-        import datetime
+        from datetime import datetime
         now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         fields = self.extract_fields(gpt_response)
 
