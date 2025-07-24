@@ -2,6 +2,7 @@ import logging
 import time
 import os
 import secrets
+import re
 from flask import Flask, request, session
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
@@ -10,7 +11,22 @@ from DB import TinyDB
 from flask import render_template_string
 from datetime import datetime
 from gsheets_db import GoogleSheetsDB
-from utils import estrai_campi_risposta  # Assicurati che questa funzione sia definita
+
+# Funzione incorporata per estrarre i campi dalla risposta
+def estrai_campi_risposta(risposta):
+    campi = {
+        "Richiedente": "",
+        "Principio attivo": "",
+        "Forma farmaceutica": "",
+        "Concentrazione": "",
+        "Quantità": "",
+        "Data di consegna": ""
+    }
+    for campo in campi:
+        match = re.search(rf"\*\*{campo}:\*\*\s*(.*)", risposta)
+        if match:
+            campi[campo] = match.group(1).strip()
+    return campi
 
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
