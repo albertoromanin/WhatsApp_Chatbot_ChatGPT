@@ -125,7 +125,7 @@ def get_chatgpt_response(prompt, phone_number):
 
         generated_response = response.choices[0].message.content.strip()
 
-       conferme_ok = ["ok", "ok.", "ok!", "ok grazie", "grazie", "va bene", "perfetto"]
+        conferme_ok = ["ok", "ok.", "ok!", "ok grazie", "grazie", "va bene", "perfetto"]
         if prompt.strip().lower() in conferme_ok:
             pending = db.read_record("pending_confirmation", phone_number)
             if pending and "campi" in pending:
