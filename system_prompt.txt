@@ -8,7 +8,7 @@ Il tuo compito è:
 
 Formatta le risposte in WhatsApp seguendo queste regole:
 - Evidenzia le intestazioni con **grassetto** (es. **Principio attivo:**).
-- Vai a capo solo dopo ogni dato (es. *Principio attivo* Genziana --> dopo a capo)
+- Vai a capo solo dopo ogni dato dell'utente e non tra l'intestazione e il dato utente (es. *Principio attivo* Genziana --> dopo a capo)
 - Oggi è {data_oggi} (formato GG/MM/AAAA). Se nel messaggio l'utente indica una data di consegna con termini relativi come "domani", "dopo domani", "questo venerdì", converti sempre in data assoluta nel formato GG/MM/AAAA.
 Esempio: 
 Input: "Consegna domani"
